@@ -7,11 +7,14 @@ from tkinter import ttk
 from tkinter import messagebox
 from PIL import Image
 from PIL import ImageTk
+from datetime import date
 
 version = "Version 0.0.1"
 version1 = "0.0.1"
 versiondate = "2025.07.02"
 license = "test"
+date = date.today().strftime("%Y-%m-%d")
+
 
 # Funktion zum Erstellen der Datenbank
 # Diese Funktion überprüft, ob die Datenbankverzeichnisse und -dateien existieren
@@ -65,8 +68,26 @@ def database():
         conn.close()
     else:
             messagebox.showinfo("Datenbank", "Die Datenbank 'preventivemaintenance.db' existiert bereits.") 
-    
 
+    if not os.path.exists('db/user.db'):
+        conn = sqlite3.connect('db/user.db')
+        conn.execute('''CREATE TABLE user
+            (ID INTEGER PRIMARY KEY NOT NULL,
+            username TEXT NOT NULL,
+            password TEXT NOT NULL,
+            role TEXT NOT NULL,
+            email TEXT NOT NULL,
+            phone TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            last_login TIMESTAMP DEFAULT CURRENT_TIMESTAMP                      
+            )
+    ''')
+        messagebox.showinfo("Datenbank", "Die Datenbank 'user.db' wurde erstellt.")
+        conn.close()
+    else:
+            messagebox.showinfo("Datenbank", "Die Datenbank 'user.db' existiert bereits.")
+    
 
 # GUI erstellen
 # Hier wird das GUI mit Tkinter erstellt
@@ -83,7 +104,6 @@ def clear_content():
         widget.destroy()
 
 
-
 # Startfenster
 # Hier wird das Startfenster erstellt, das beim Starten der Anwendung angezeigt wird
 def start():
@@ -97,9 +117,6 @@ def start():
     label_img.image = img
     label_img.pack(pady=10)
  
-
-
-
 #info Fenster INSTANDO
 def info():
     messagebox.showinfo("INSTANDO", "INSTANDO - Instandhaltungsdatenbank\n\n"
@@ -108,9 +125,91 @@ def info():
                                     "\n\n" + version + " vom "
                                     + versiondate + "\n"
                                     "Lizenz: " + license + "\n\n")
+    
+#usermenü
+def user():
+    clear_content()
+    tk.Label(content_frame, text="Benutzerverwaltung", font=("Arial", 25)).pack(pady=10)
+    #userhinzufügen
+    tk.Label(content_frame, text="Benutzer hinzufügen", font=("Arial", 15)).pack(pady=10)
+    tk.Label(content_frame, text="Benutzername", font=("Arial", 12)).pack(pady=5)
+    username_entry = tk.Entry(content_frame, width=30)
+    username_entry.pack(pady=5)
+    tk.Label(content_frame, text="Passwort", font=("Arial", 12)).pack(pady=5)
+    password_entry = tk.Entry(content_frame, show='*', width=30)
+    password_entry.pack(pady=5)
+    roles = ["admin", "user", "reader"]
+    role_combobox = ttk.Combobox(content_frame, values=roles, width=27)
+    role_combobox.set("Wählen Sie eine Rolle")
+    role_combobox.pack(pady=5) 
+    tk.Label(content_frame, text="E-Mail", font=("Arial", 12)).pack(pady=5)
+    email_entry = tk.Entry(content_frame, width=30)
+    email_entry.pack(pady=5)
+    tk.Label(content_frame, text="Telefon", font=("Arial", 12)).pack(pady=5)
+    phone_entry = tk.Entry(content_frame, width=30)
+    phone_entry.pack(pady=5)          
 
+    # Übersicht der Benutzer
 
+    tk.Label(content_frame, text="Benutzerübersicht", font=("Arial", 25)).pack(pady=10)
+        
+    # Verbindung zur Datenbank herstellen
+    conn = sqlite3.connect('db/user.db')
+    cursor = conn.cursor()
+        
+    # Alle Benutzer aus der Datenbank abfragen
+    cursor.execute("SELECT ID, username, role, email, phone, created_at, updated_at, last_login FROM user")
+    users = cursor.fetchall()
+        
+    # Überschriften für die Tabelle (ohne Passwort)
+    headers = ["ID", "Benutzername", "Rolle", "E-Mail", "Telefon", "Erstellt am", "Aktualisiert am", "Letzte Anmeldung"]
 
+    # Baumansicht erstellen
+    tree = ttk.Treeview(content_frame, columns=headers, show='headings')
+    tree.pack(fill='both', expand=True)
+        
+    # Spaltenüberschriften hinzufügen
+    for header in headers:
+        tree.heading(header, text=header)
+        tree.column(header, anchor='center')
+        
+    # Daten in die Baumansicht einfügen
+    for user in users:
+        tree.insert('', 'end', values=user)
+        
+    conn.close()
+       
+    # Funktion zum Hinzufügen eines Benutzers
+    # Diese Funktion wird aufgerufen, wenn der "Benutzer hinzufügen"-Button geklickt wird
+    # Sie überprüft die Eingabefelder und fügt den Benutzer in die Datenbank ein    
+    def add_user():
+        username = username_entry.get()
+        password = password_entry.get()
+        role = role_combobox.get()
+        email = email_entry.get()
+        phone = phone_entry.get()
+
+        if not username or not password or not role or not email or not phone:
+            messagebox.showerror("Fehler", "Bitte füllen Sie alle Felder aus.")
+            return
+
+        # Verbindung zur Datenbank herstellen
+        conn = sqlite3.connect('db/user.db')
+        cursor = conn.cursor()
+
+        # Benutzer in die Datenbank einfügen
+        cursor.execute('''INSERT INTO user (username, password, role, email, phone) 
+                          VALUES (?, ?, ?, ?, ?)''', 
+                       (username, password, role, email, phone))   
+        conn.commit()
+        conn.close()
+
+        messagebox.showinfo("Benutzer hinzufügen", "Der Benutzer " + username + " wurde erfolgreich hinzugefügt.") 
+
+    # Button zum Hinzufügen des Benutzers
+    add_user_button = tk.Button(content_frame, text="Benutzer hinzufügen", command=add_user, width=20, height=2, bg='green', fg='white')
+    add_user_button.pack(pady=10)
+    # Hier können Sie weitere Funktionen zur Benutzerverwaltung hinzufügen
 
 # Anlagen hinzufügen
 def add_device():
@@ -162,7 +261,6 @@ def add_device():
  addressmanufacture = tk.Entry(content_frame, width=50)
  addressmanufacture.grid(row=8, column=1 , pady=20, sticky='w')   
 
-
  # Button zum Speichern der Daten
  # Funktion zum Speichern der Daten in die Datenbank
  def save_device():
@@ -197,10 +295,39 @@ def add_device():
  # Hier wird der Button zum Speichern der Daten erstellt
  save_button = tk.Button(content_frame, text="Gerät speichern", command=save_device, width=20, height=2, bg='green', fg='white')
  save_button.grid(row=9, column=1, columnspan=2, pady=20, sticky='w') 
+
+
+# Übersicht der Geräte
+def device_overview():  
+    clear_content()
+    tk.Label(content_frame, text="Geräteübersicht", font=("Arial", 25)).pack(pady=10)
+    
+    # Verbindung zur Datenbank herstellen
+    conn = sqlite3.connect('db/device.db')
+    cursor = conn.cursor()
+    
+    # Alle Geräte aus der Datenbank abfragen
+    cursor.execute("SELECT * FROM device")
+    devices = cursor.fetchall()
+    
+    # Überschriften für die Tabelle
+    headers = ["ID", "Name", "Hersteller", "Seriennummer", "Typ/Model", "Baujahr", "Interne ID", "Status", "Standort", "Schaltplan", "Technische Zeichnung", "Bedienungsanleitung", "Notizen", "Serviceadresse", "Herstelleradresse"]
+
+    # Baumansicht erstellen
+    tree = ttk.Treeview(content_frame, columns=headers, show='headings')
+    tree.pack(fill='both', expand=True)
+    
+    # Spaltenüberschriften hinzufügen
+    for header in headers:
+        tree.heading(header, text=header)
+        tree.column(header, anchor='center')
+    
+    # Daten in die Baumansicht einfügen
+    for device in devices:
+        tree.insert('', 'end', values=device)
+    
+    conn.close()
   
-
-
-
 #auswahlmennü
 menu_bar = tk.Menu(root)
 
@@ -210,8 +337,8 @@ def do_something():
 
 file_menu = tk.Menu(menu_bar, tearoff=0)
 file_menu.add_command(label="Startmenü", command=start)
-file_menu.add_command(label="Datenbank erstellen" ,command=database)
-file_menu.add_command(label="USER", command=do_something)
+file_menu.add_command(label="Datenbank" ,command=database)
+file_menu.add_command(label="USER", command=user)
 file_menu.add_command(label="INFO", command=info)
 file_menu.add_command(label="SETTING", command=do_something)
 file_menu.add_command(label="BACKUP", command=do_something)
@@ -223,15 +350,29 @@ menu_bar.add_cascade(label="INSTANDO", menu=file_menu)
 edit_menu = tk.Menu(menu_bar, tearoff=0)
 edit_menu.add_command(label="Anlagen bearbeiten", command=do_something)
 edit_menu.add_command(label="Einfügen", command=add_device)
+edit_menu.add_command(label="Übersicht", command=device_overview)
+edit_menu.add_command(label="Löschen", command=do_something)
 menu_bar.add_cascade(label="ANLAGEN", menu=edit_menu)
 
-#Wartung/Instandsetzung Menü   
+# Wartung/Instandsetzung Menü   
 edit_menu = tk.Menu(menu_bar, tearoff=0)
 edit_menu.add_command(label="Wartung bearbeiten", command=do_something)
 edit_menu.add_command(label="Instandsetzung", command=do_something)
 menu_bar.add_cascade(label="WARTUNG/INSTANDSETZUNG", menu=edit_menu)
 
+# Störaufträge Menü
+edit_menu = tk.Menu(menu_bar, tearoff=0)
+edit_menu.add_command(label="Störaufträge hinzufügen", command=do_something)
+edit_menu.add_command(label="Störaufträge bearbeiten", command=do_something)
+menu_bar.add_cascade(label="STÖRAUFTRÄGE", menu=edit_menu)  
 
+# Tools Menü
+edit_menu = tk.Menu(menu_bar, tearoff=0)
+edit_menu.add_command(label="Prüfprotokoll", command=do_something)
+edit_menu.add_command(label="Adressbuch", command=do_something)
+
+edit_menu.add_command(label="Werkzeugliste", command=do_something)
+menu_bar.add_cascade(label="TOOLS", menu=edit_menu)
 root.config(menu=menu_bar)
 start()
 
