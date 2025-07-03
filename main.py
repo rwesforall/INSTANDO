@@ -14,12 +14,13 @@ version1 = "0.0.1"
 versiondate = "2025.07.02"
 license = "test"
 date = date.today().strftime("%Y-%m-%d")
+userrolle = "reader"
 
 
 # Funktion zum Erstellen der Datenbank
 # Diese Funktion überprüft, ob die Datenbankverzeichnisse und -dateien existieren
 # Wenn nicht, werden sie erstellt und die entsprechenden Tabellen angelegt
-def database():
+def database_device():
     # Ensure the 'db' directory exists
     if not os.path.exists('db'):
         os.makedirs('db')
@@ -48,7 +49,7 @@ def database():
         conn.close()
     else:   
         messagebox  .showinfo("Datenbank", "Die Datenbank 'device.db' existiert bereits.")  
-
+def database_preventivemaintenance():
     if not os.path.exists('db/preventivemaintenance.db'):
         conn = sqlite3.connect('db/preventivemaintenance.db')
         conn.execute('''CREATE TABLE preventivemaintenance
@@ -67,8 +68,10 @@ def database():
         messagebox.showinfo("Datenbank", "Die Datenbank 'preventivemaintenance.db' wurde erstellt.")
         conn.close()
     else:
-            messagebox.showinfo("Datenbank", "Die Datenbank 'preventivemaintenance.db' existiert bereits.") 
+        messagebox.showinfo("Datenbank", "Die Datenbank 'preventivemaintenance.db' existiert bereits.")
 
+
+def database_user1():     
     if not os.path.exists('db/user.db'):
         conn = sqlite3.connect('db/user.db')
         conn.execute('''CREATE TABLE user
@@ -87,7 +90,14 @@ def database():
         conn.close()
     else:
             messagebox.showinfo("Datenbank", "Die Datenbank 'user.db' existiert bereits.")
-    
+    #root-user erstellen
+    conn = sqlite3.connect('db/user.db')
+    cursor = conn.cursor()
+    cursor.execute('''INSERT INTO user (username, password, role, email, phone) 
+                          VALUES (?, ?, ?, ?, ?)''', 
+                       ("root", "root", "admin", "root@example.com", "0000000000"))
+    conn.commit()
+    conn.close()
 
 # GUI erstellen
 # Hier wird das GUI mit Tkinter erstellt
@@ -103,9 +113,47 @@ def clear_content():
     for widget in content_frame.winfo_children():
         widget.destroy()
 
+# Login-Funktion
+def login():
+    clear_content()
+    #aktuelle Rolle des Benutzers
+    tk.Label(content_frame, text="Aktuelle Rolle: " + userrolle, font=("Arial", 12)).pack(pady=5)
+
+    tk.Label(content_frame, text="Login", font=("Arial", 25)).pack(pady=10)
+    tk.Label(content_frame, text="Benutzername", font=("Arial", 12)).pack(pady=5)
+    username_entry = tk.Entry(content_frame, width=30)
+    username_entry.pack(pady=5)
+    tk.Label(content_frame, text="Passwort", font=("Arial", 12)).pack(pady=5)
+    password_entry = tk.Entry(content_frame, show='*', width=30)
+    password_entry.pack(pady=5) 
+    # Funktion zum Überprüfen der Anmeldedaten
+    # Diese Funktion wird aufgerufen, wenn der "Anmelden"-Button geklickt wird
+    def check_login():
+        username = username_entry.get()
+        password = password_entry.get()
+
+        # Verbindung zur Datenbank herstellen
+        conn = sqlite3.connect('db/user.db')
+        cursor = conn.cursor()
+
+        # Benutzer in der Datenbank suchen
+        cursor.execute("SELECT * FROM user WHERE username=? AND password=?", (username, password))
+        user = cursor.fetchone()
+        
+        conn.close()
+
+        if user:
+            global userrolle
+            userrolle = user[3]  # Rolle des Benutzers abrufen
+            messagebox.showinfo("Login", "Willkommen, " + username + "! Sie sind als " + userrolle + " angemeldet.")
+            start()  # Startfenster anzeigen
+        else:
+            messagebox.showerror("Login", "Ungültiger Benutzername oder Passwort. Bitte versuchen Sie es erneut.")  
+    # Button zum Überprüfen der Anmeldedaten
+    login_button = tk.Button(content_frame, text="Anmelden", command=check_login, width=20, height=2, bg='blue', fg='white')
+    login_button.pack(pady=10)  
 
 # Startfenster
-# Hier wird das Startfenster erstellt, das beim Starten der Anwendung angezeigt wird
 def start():
     clear_content()
     tk.Label(content_frame, text="Willkommen bei INSTANDO", font=("Arial", 25)).pack(pady=10)
@@ -125,91 +173,151 @@ def info():
                                     "\n\n" + version + " vom "
                                     + versiondate + "\n"
                                     "Lizenz: " + license + "\n\n")
-    
+
 #usermenü
 def user():
-    clear_content()
-    tk.Label(content_frame, text="Benutzerverwaltung", font=("Arial", 25)).pack(pady=10)
-    #userhinzufügen
-    tk.Label(content_frame, text="Benutzer hinzufügen", font=("Arial", 15)).pack(pady=10)
-    tk.Label(content_frame, text="Benutzername", font=("Arial", 12)).pack(pady=5)
-    username_entry = tk.Entry(content_frame, width=30)
-    username_entry.pack(pady=5)
-    tk.Label(content_frame, text="Passwort", font=("Arial", 12)).pack(pady=5)
-    password_entry = tk.Entry(content_frame, show='*', width=30)
-    password_entry.pack(pady=5)
-    roles = ["admin", "user", "reader"]
-    role_combobox = ttk.Combobox(content_frame, values=roles, width=27)
-    role_combobox.set("Wählen Sie eine Rolle")
-    role_combobox.pack(pady=5) 
-    tk.Label(content_frame, text="E-Mail", font=("Arial", 12)).pack(pady=5)
-    email_entry = tk.Entry(content_frame, width=30)
-    email_entry.pack(pady=5)
-    tk.Label(content_frame, text="Telefon", font=("Arial", 12)).pack(pady=5)
-    phone_entry = tk.Entry(content_frame, width=30)
-    phone_entry.pack(pady=5)          
+    if userrolle == "admin":
+        clear_content()
+        tk.Label(content_frame, text="Benutzerverwaltung", font=("Arial", 25)).pack(pady=10)
+        # Benutzer hinzufügen
+        tk.Label(content_frame, text="Benutzer hinzufügen", font=("Arial", 15)).pack(pady=10)
+        tk.Label(content_frame, text="Benutzername", font=("Arial", 12)).pack(pady=5)
+        username_entry = tk.Entry(content_frame, width=30)
+        username_entry.pack(pady=5)
+        tk.Label(content_frame, text="Passwort", font=("Arial", 12)).pack(pady=5)
+        password_entry = tk.Entry(content_frame, show='*', width=30)
+        password_entry.pack(pady=5)
+        roles = ["admin", "user", "reader"]
+        role_combobox = ttk.Combobox(content_frame, values=roles, width=27)
+        role_combobox.set("Wählen Sie eine Rolle")
+        role_combobox.pack(pady=5)
+        tk.Label(content_frame, text="E-Mail", font=("Arial", 12)).pack(pady=5)
+        email_entry = tk.Entry(content_frame, width=30)
+        email_entry.pack(pady=5)
+        tk.Label(content_frame, text="Telefon", font=("Arial", 12)).pack(pady=5)
+        phone_entry = tk.Entry(content_frame, width=30)
+        phone_entry.pack(pady=5)
 
-    # Übersicht der Benutzer
-
-    tk.Label(content_frame, text="Benutzerübersicht", font=("Arial", 25)).pack(pady=10)
-        
-    # Verbindung zur Datenbank herstellen
-    conn = sqlite3.connect('db/user.db')
-    cursor = conn.cursor()
-        
-    # Alle Benutzer aus der Datenbank abfragen
-    cursor.execute("SELECT ID, username, role, email, phone, created_at, updated_at, last_login FROM user")
-    users = cursor.fetchall()
-        
-    # Überschriften für die Tabelle (ohne Passwort)
-    headers = ["ID", "Benutzername", "Rolle", "E-Mail", "Telefon", "Erstellt am", "Aktualisiert am", "Letzte Anmeldung"]
-
-    # Baumansicht erstellen
-    tree = ttk.Treeview(content_frame, columns=headers, show='headings')
-    tree.pack(fill='both', expand=True)
-        
-    # Spaltenüberschriften hinzufügen
-    for header in headers:
-        tree.heading(header, text=header)
-        tree.column(header, anchor='center')
-        
-    # Daten in die Baumansicht einfügen
-    for user in users:
-        tree.insert('', 'end', values=user)
-        
-    conn.close()
-       
-    # Funktion zum Hinzufügen eines Benutzers
-    # Diese Funktion wird aufgerufen, wenn der "Benutzer hinzufügen"-Button geklickt wird
-    # Sie überprüft die Eingabefelder und fügt den Benutzer in die Datenbank ein    
-    def add_user():
-        username = username_entry.get()
-        password = password_entry.get()
-        role = role_combobox.get()
-        email = email_entry.get()
-        phone = phone_entry.get()
-
-        if not username or not password or not role or not email or not phone:
-            messagebox.showerror("Fehler", "Bitte füllen Sie alle Felder aus.")
-            return
+        # Übersicht der Benutzer
+        tk.Label(content_frame, text="Benutzerübersicht", font=("Arial", 25)).pack(pady=10)
 
         # Verbindung zur Datenbank herstellen
         conn = sqlite3.connect('db/user.db')
         cursor = conn.cursor()
 
-        # Benutzer in die Datenbank einfügen
-        cursor.execute('''INSERT INTO user (username, password, role, email, phone) 
-                          VALUES (?, ?, ?, ?, ?)''', 
-                       (username, password, role, email, phone))   
-        conn.commit()
+        # Alle Benutzer aus der Datenbank abfragen
+        cursor.execute("SELECT ID, username, role, email, phone, created_at, updated_at, last_login FROM user")
+        users = cursor.fetchall()
+
+        # Überschriften für die Tabelle (ohne Passwort)
+        headers = ["ID", "Benutzername", "Rolle", "E-Mail", "Telefon", "Erstellt am", "Aktualisiert am", "Letzte Anmeldung"]
+
+        # Baumansicht erstellen
+        tree = ttk.Treeview(content_frame, columns=headers, show='headings')
+        tree.pack(fill='both', expand=True)
+
+        # Spaltenüberschriften hinzufügen
+        for header in headers:
+            tree.heading(header, text=header)
+            tree.column(header, anchor='center')
+
+        # Daten in die Baumansicht einfügen
+        for user_row in users:
+            tree.insert('', 'end', values=user_row)
+
         conn.close()
 
-        messagebox.showinfo("Benutzer hinzufügen", "Der Benutzer " + username + " wurde erfolgreich hinzugefügt.") 
+        # Funktion zum Hinzufügen eines Benutzers
+        def add_user():
+            username = username_entry.get()
+            password = password_entry.get()
+            role = role_combobox.get()
+            email = email_entry.get()
+            phone = phone_entry.get()
 
-    # Button zum Hinzufügen des Benutzers
-    add_user_button = tk.Button(content_frame, text="Benutzer hinzufügen", command=add_user, width=20, height=2, bg='green', fg='white')
-    add_user_button.pack(pady=10)
-    # Hier können Sie weitere Funktionen zur Benutzerverwaltung hinzufügen
+            if not username or not password or not role or not email or not phone:
+                messagebox.showerror("Fehler", "Bitte füllen Sie alle Felder aus.")
+                return
+
+            # Verbindung zur Datenbank herstellen
+            conn = sqlite3.connect('db/user.db')
+            cursor = conn.cursor()
+
+            # Benutzer in die Datenbank einfügen
+            cursor.execute('''INSERT INTO user (username, password, role, email, phone) 
+                          VALUES (?, ?, ?, ?, ?)''',
+                       (username, password, role, email, phone))
+            conn.commit()
+            conn.close()
+            messagebox.showinfo("Benutzer hinzufügen", "Der Benutzer " + username + " wurde erfolgreich hinzugefügt.")
+
+        # Button zum Hinzufügen des Benutzers
+        add_user_button = tk.Button(content_frame, text="Benutzer hinzufügen", command=add_user, width=20, height=2, bg='green', fg='white')
+        add_user_button.pack(pady=10)
+    else:
+        clear_content()
+        tk.Label(content_frame, text="keine Berechtigung", font=("Arial", 25)).pack(pady=10)
+    
+
+# Datenbank erstellen
+def database():
+    if userrolle == "admin":
+        clear_content()
+        tk.Label(content_frame, text="Datenbank verwaltung", font=("Arial", 25)).pack(pady=10)
+    
+        # Frame für die Buttons nebeneinander
+        create_frame = tk.Frame(content_frame)
+        create_frame.pack(pady=20)
+
+        # Buttons zum Erstellen der Datenbanken
+        create_button = tk.Button(create_frame, text="Anlagen Datenbank erstellen", command=database_device, width=25, height=2, bg='purple', fg='white')
+        create_button.grid(row=0, column=0, padx=10)
+        create_button1 = tk.Button(create_frame, text="Wartung Datenbank erstellen", command=database_preventivemaintenance, width=25, height=2, bg='purple', fg='white')
+        create_button1.grid(row=0, column=1, padx=10)
+        create_button2 = tk.Button(create_frame, text="Benutzer Datenbank erstellen", command=database_user1, width=25, height=2, bg='purple', fg='white')
+        create_button2.grid(row=0, column=2, padx=10)
+
+        # Frame für die Lösch-Buttons nebeneinander
+        delete_frame = tk.Frame(content_frame)
+        delete_frame.pack(pady=20)
+
+        # Datenbank device.db löschen
+        def delete_database():
+            if os.path.exists('db/device.db'):
+                os.remove('db/device.db')
+                messagebox.showinfo("Datenbank löschen", "Die Datenbank 'device.db' wurde gelöscht.")
+            else:
+                messagebox.showerror("Fehler", "Die Datenbank 'device.db' existiert nicht.")
+
+        # Datenbank preventivemaintenance.db löschen
+        def delete_database1():
+            if os.path.exists('db/preventivemaintenance.db'):
+                os.remove('db/preventivemaintenance.db')
+                messagebox.showinfo("Datenbank löschen", "Die Datenbank 'preventivemaintenance.db' wurde gelöscht.")
+            else:
+                messagebox.showerror("Fehler", "Die Datenbank 'preventivemaintenance.db' existiert nicht.")
+
+        # Datenbank user.db löschen
+        def delete_database2():
+            if os.path.exists('db/user.db'):
+                os.remove('db/user.db')
+                messagebox.showinfo("Datenbank löschen", "Die Datenbank 'user.db' wurde gelöscht.")
+            else:
+                messagebox.showerror("Fehler", "Die Datenbank 'user.db' existiert nicht.")
+
+        # Buttons zum Löschen der Datenbanken
+        delete_button = tk.Button(delete_frame, text="Anlagen Datenbank löschen", command=delete_database, width=25, height=2, bg='red', fg='white')
+        delete_button.grid(row=0, column=0, padx=10)
+        delete_button1 = tk.Button(delete_frame, text="Wartung Datenbank löschen", command=delete_database1, width=25, height=2, bg='red', fg='white')
+        delete_button1.grid(row=0, column=1, padx=10)
+        delete_button2 = tk.Button(delete_frame, text="Benutzer Datenbank löschen", command=delete_database2, width=25, height=2, bg='red', fg='white')
+        delete_button2.grid(row=0, column=2, padx=10)
+    else:
+        clear_content()
+        tk.Label(content_frame, text="keine Berechtigung", font=("Arial", 25)).pack(pady=10)
+    
+        
+       
 
 # Anlagen hinzufügen
 def add_device():
@@ -337,6 +445,7 @@ def do_something():
 
 file_menu = tk.Menu(menu_bar, tearoff=0)
 file_menu.add_command(label="Startmenü", command=start)
+file_menu.add_command(label="Login", command=login)
 file_menu.add_command(label="Datenbank" ,command=database)
 file_menu.add_command(label="USER", command=user)
 file_menu.add_command(label="INFO", command=info)
